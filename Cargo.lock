@@ -143,9 +143,11 @@ dependencies = [
 name = "grumpc"
 version = "0.1.0"
 dependencies = [
+ "prost",
  "tokio",
  "tonic",
  "tonic-build",
+ "tracing",
 ]
 
 [[package]]

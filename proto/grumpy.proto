@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package grumpy;
+
+service Grumpy {
+    rpc Status (Empty) returns (StatusReply);
+    rpc GoodEnough (Item) returns (GrumpyReply);
+}
+
+message Empty {}
+message StatusReply {
+    bool success = 1;
+}
+
+message Item {
+    string mood = 1;
+    string contents_sentiment = 2;
+    string full_text = 3;
+}
+message GrumpyReply {
+    bool good_enough = 1;
+}
