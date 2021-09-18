@@ -30,12 +30,12 @@ impl Grumpy for Grumper {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    println!("Hello, server!");
-
     let addr = std::net::SocketAddr::from(([0, 0, 0, 0], 3002));
     let service = tonic::transport::Server::builder()
         .add_service(GrumpyServer::new(Grumper {}))
-        .serve(addr);
+        .serve(addr.clone());
+    println!("Server listening at {}", addr);
+
     service.await?;
 
     Ok(())

@@ -2,12 +2,30 @@ use grumpc::grumpy_client::GrumpyClient;
 use grumpc::{Empty, Item};
 
 use chrono::prelude::*;
+use std::iter::Iterator;
 
-fn make_item() -> Item {
-    Item {
-        mood: "grumpy".to_owned(),
-        contents_sentiment: "disappointment".to_owned(),
-        full_text: "no".to_owned(),
+struct ItemGen {
+    mood_iter: Box<dyn Iterator<Item = (&'static str, &'static str)> + Sync>,
+}
+impl ItemGen {
+    fn new() -> Self {
+        let mood_iter = ["grumpy", "happy", "sleepy", "moody"].iter().cycle();
+        let sent_iter = ["disappointment", "neutral", "surprized"].iter().cycle();
+        ItemGen {
+            mood_iter: Box::new(mood_iter.zip(sent_iter).map(|(&a, &b)| (a, b))),
+        }
+    }
+}
+impl Iterator for ItemGen {
+    type Item = Item;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let (mood, sent) = self.mood_iter.next().unwrap();
+        Some(Item {
+            mood: mood.to_owned(),
+            contents_sentiment: sent.to_owned(),
+            full_text: format!("Some explanation of {} compared to {}", mood, sent),
+        })
     }
 }
 
@@ -24,17 +42,14 @@ macro_rules! measure {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    println!("Hello, client!");
-
     let mut client = GrumpyClient::connect("http://localhost:3002").await?;
     let res = client.status(Empty {}).await?.into_inner();
     println!("Server status: {}", res.success);
 
-    // let res = client.good_enough(make_item()).await?.into_inner();
-    // println!("Good enough: {}", res.good_enough);
-    let elapsed = measure!(client.good_enough(make_item()).await?);
+    let mut item_generator = ItemGen::new();
+    let elapsed = measure!(client.good_enough(item_generator.next().unwrap()).await?);
     println!(
-        "Elapsed {} s, throughput: {:.2} req/s",
+        "Elapsed {:.3} s, throughput: {:.2} req/s",
         elapsed,
         1000. / elapsed
     );
