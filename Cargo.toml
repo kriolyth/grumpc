@@ -1,0 +1,15 @@
+[package]
+name = "grumpc"
+version = "0.1.0"
+edition = "2018"
+author = "Alexander Efremkin <kriolyth@gmail.com>"
+license = "Apache-2.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+tokio = { version = "1", features = ["full"]}
+tonic = "0.5"
+
+[build-dependencies]
+tonic-build = "0.5.2"
