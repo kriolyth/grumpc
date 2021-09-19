@@ -4,6 +4,8 @@ use grumpc::{Empty, Item};
 use chrono::prelude::*;
 use std::iter::Iterator;
 
+use serde_json::json;
+
 struct ItemGen {
     mood_iter: Box<dyn Iterator<Item = (&'static str, &'static str)> + Sync>,
 }
@@ -21,22 +23,36 @@ impl Iterator for ItemGen {
 
     fn next(&mut self) -> Option<Self::Item> {
         let (mood, sent) = self.mood_iter.next().unwrap();
+        let js = json!({
+            "mood": mood.to_string(),
+            "sentiment": sent.to_string(),
+            "additional_properties": [
+                {"id": 1, "prop": "source", "value": "twitter"},
+            ],
+            "description": "Grumpy response",
+            "full_text": format!("Some explanation of {} compared to {}", mood, sent),
+        });
         Some(Item {
             mood: mood.to_owned(),
             contents_sentiment: sent.to_owned(),
-            full_text: format!("Some explanation of {} compared to {}", mood, sent),
+            json_encoded_props: serde_json::to_string(&js).unwrap(),
         })
     }
 }
 
 macro_rules! measure {
-    ($f: expr) => {{
+    ($name: literal, $f: expr) => {{
         let start_time = Utc::now();
         for _ in 0..1000 {
             $f;
         }
         let duration = Utc::now() - start_time;
-        duration.num_milliseconds() as f64 / 1000.
+        let elapsed = duration.num_milliseconds() as f64 / 1000.;
+        println!(
+            "{}: {:.3} s, throughput: {:.2} req/s",
+            $name, elapsed,
+            1000. / elapsed
+        );
     }};
 }
 
@@ -47,12 +63,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Server status: {}", res.success);
 
     let mut item_generator = ItemGen::new();
-    let elapsed = measure!(client.good_enough(item_generator.next().unwrap()).await?);
-    println!(
-        "Elapsed {:.3} s, throughput: {:.2} req/s",
-        elapsed,
-        1000. / elapsed
+    measure!("good_enough_partial", 
+        client
+            .good_enough_partial(item_generator.next().unwrap())
+            .await?
     );
+    measure!("good_enough", 
+        client
+            .good_enough(item_generator.next().unwrap())
+            .await?
+    );
+    
 
     Ok(())
 }
